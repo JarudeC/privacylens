@@ -6,6 +6,7 @@ import { expect, test, vi } from 'vitest'
 import { render, getQueriesForElement } from '@lynx-js/react/testing-library'
 
 import { App } from '../App.jsx'
+import App from '../App'
 
 test('App', async () => {
   const cb = vi.fn()
