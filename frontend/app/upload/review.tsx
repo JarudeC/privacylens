@@ -19,6 +19,7 @@ export default function ReviewFlagsScreen() {
   const [selectedFrame, setSelectedFrame] = useState<PIIFrame | null>(null);
   const [filteredFrames, setFilteredFrames] = useState<PIIFrame[]>([]);
   const [isCreatingProtected, setIsCreatingProtected] = useState(false);
+  const [hasNavigated, setHasNavigated] = useState(false);
   
   React.useEffect(() => {
     setFilteredFrames(response.piiFrames);
@@ -88,12 +89,13 @@ export default function ReviewFlagsScreen() {
   };
 
   const createProtectedVideo = async () => {
-    if (isCreatingProtected) return;
+    if (isCreatingProtected || hasNavigated) return;
     
+    console.log('🔐 Creating protected video - single call');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsCreatingProtected(true);
+    setHasNavigated(true);
     
-    // Navigate to processing screen to show loading while creating protected video
     router.replace({
       pathname: '/upload/processing',
       params: { 
@@ -111,7 +113,10 @@ export default function ReviewFlagsScreen() {
       pathname: '/upload/success',
       params: { 
         videoData: JSON.stringify(video),
-        responseData: JSON.stringify(response),
+        responseData: JSON.stringify({
+          ...response,
+          piiFrames: filteredFrames // Use filtered frames, not original response
+        }),
         uploadType: 'original'
       },
     });

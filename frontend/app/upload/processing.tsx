@@ -27,6 +27,7 @@ export default function ProcessingScreen() {
     mode?: string;
   }>();
   const [currentTask, setCurrentTask] = useState('Analysis completed!');
+  const [hasStartedProcessing, setHasStartedProcessing] = useState(false);
 
   const video: UploadedVideo = JSON.parse(videoData);
   const analysis = analysisData ? JSON.parse(analysisData) : null;
@@ -35,6 +36,9 @@ export default function ProcessingScreen() {
   const pulse = useSharedValue(0);
 
   useEffect(() => {
+    if (hasStartedProcessing) return; // Prevent multiple executions
+    setHasStartedProcessing(true);
+    
     // Immediately stop all audio playback
     Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
