@@ -48,8 +48,7 @@ export default function UploadSuccessScreen() {
     return types.map(type => {
       switch (type) {
         case 'credit_card': return 'Credit Cards';
-        case 'id_card': return 'ID Cards';
-        case 'address': return 'Addresses';
+        case 'car_plate': return 'License Plates';
         default: return type;
       }
     }).join(', ');

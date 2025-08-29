@@ -49,8 +49,7 @@ export default function ReviewFlagsScreen() {
   const getPIIIcon = (type: string) => {
     switch (type) {
       case 'credit_card': return 'card';
-      case 'id_card': return 'id-card';
-      case 'address': return 'location';
+      case 'car_plate': return 'car';
       default: return 'document';
     }
   };

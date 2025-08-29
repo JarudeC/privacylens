@@ -213,7 +213,7 @@ def extract_video_frame(video_path: str, frame_id: str, timestamp_seconds: float
         # 🚀 AI TEAM TODO: Replace this mock section with YOLO detection
         # MOCK PII detection annotations (REMOVE when integrating YOLO)
         draw = ImageDraw.Draw(img)
-        colors = {'credit_card': 'red', 'id_card': 'orange', 'address': 'blue'}
+        colors = {'credit_card': 'red', 'car_plate': 'blue'}
         
         # MOCK: Vary positions based on timestamp to make frames visually distinct
         base_x = int(50 + (timestamp_seconds * 30))  # Offset based on timestamp
@@ -269,7 +269,7 @@ def create_fallback_frame(frame_id: str, pii_types: List[str]) -> str:
     
     # Add mock PII annotations
     y_offset = 100
-    colors = {'credit_card': 'red', 'id_card': 'orange', 'address': 'blue'}
+    colors = {'credit_card': 'red', 'car_plate': 'blue'}
     
     for pii_type in pii_types:
         color = colors.get(pii_type, 'purple')
@@ -368,8 +368,8 @@ async def upload_and_analyze_video(video: UploadFile = File(...)):
     # ✅ REAL: Extract actual frames from video at 1, 2, 3 seconds
     print(f"📹 Extracting frames from: {file_path}")
     frame_1_uri = extract_video_frame(str(file_path), f"{video_id}_frame_1", 1.0, ["credit_card"])
-    frame_2_uri = extract_video_frame(str(file_path), f"{video_id}_frame_2", 2.0, ["address", "credit_card"]) 
-    frame_3_uri = extract_video_frame(str(file_path), f"{video_id}_frame_3", 3.0, ["id_card"])
+    frame_2_uri = extract_video_frame(str(file_path), f"{video_id}_frame_2", 2.0, ["car_plate", "credit_card"]) 
+    frame_3_uri = extract_video_frame(str(file_path), f"{video_id}_frame_3", 3.0, ["car_plate"])
     
     # 🔄 MOCK PII detection results - REPLACE with real AI/ML processing
     mock_pii_frames = [
@@ -392,9 +392,9 @@ async def upload_and_analyze_video(video: UploadFile = File(...)):
             timestamp=2.0,
             detections=[
                 PIIDetection(
-                    type="address",
+                    type="car_plate",
                     confidence=0.87,
-                    description="Street address: 123 Main St, City",
+                    description="License plate: ABC-1234",
                     severity="medium"
                 ),
                 PIIDetection(
@@ -411,9 +411,9 @@ async def upload_and_analyze_video(video: UploadFile = File(...)):
             timestamp=3.0,
             detections=[
                 PIIDetection(
-                    type="id_card",
+                    type="car_plate",
                     confidence=0.92,
-                    description="Driver's license detected",
+                    description="License plate: XYZ-5678",
                     severity="high"
                 )
             ]

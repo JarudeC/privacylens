@@ -133,8 +133,7 @@ export default function BlurredPreviewScreen() {
   const getDetectionLabel = (type: string) => {
     switch (type) {
       case 'credit_card': return 'Credit Card';
-      case 'id_card': return 'ID Card';
-      case 'address': return 'Address';
+      case 'car_plate': return 'License Plate';
       default: return type;
     }
   };
