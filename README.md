@@ -56,7 +56,10 @@ Portfolio Pilot allows users to build and optimize investment portfolios using a
 ### Backend Dependencies
 ```bash
 cd backend
-pip install torch==2.2.2+cpu --index-url https://download.pytorch.org/whl/cpu
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
@@ -77,6 +80,6 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 **Start Frontend Development Server:**
 ```bash
 cd frontend
-npm run dev
+npx expo start
 ```
 
