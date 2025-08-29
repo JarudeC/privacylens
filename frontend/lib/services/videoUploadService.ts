@@ -23,6 +23,24 @@ class VideoUploadService {
     }
   }
 
+  // React Native compatible upload method
+  async uploadAndAnalyzeFormData(
+    formData: FormData,
+    onProgress?: (progress: number) => void
+  ): Promise<VideoUploadResponse> {
+    try {
+      const response = await apiClient.uploadWithProgress<VideoUploadResponse>(
+        '/api/v1/video/upload',
+        formData,
+        onProgress
+      );
+      return response;
+    } catch (error) {
+      console.error('Video upload failed:', error);
+      throw error;
+    }
+  }
+
   // Second POST - Create protected video with selected PII objects
   async createProtectedVideo(
     videoId: string,

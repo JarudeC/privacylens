@@ -23,7 +23,7 @@ class APIClient {
   private requestInterceptors: Array<(config: RequestConfig) => RequestConfig | Promise<RequestConfig>> = [];
   private responseInterceptors: Array<(response: Response) => Response | Promise<Response>> = [];
 
-  constructor(baseURL: string = 'http://localhost:8000') {
+  constructor(baseURL: string = 'https://your-render-app-name.onrender.com') {
     this.baseURL = baseURL;
     this.defaultHeaders = {
       'Content-Type': 'application/json',
@@ -137,7 +137,7 @@ class APIClient {
         throw error;
       }
 
-      if (error instanceof DOMException && error.name === 'AbortError') {
+      if ((error as any)?.name === 'AbortError') {
         throw new APIError('Request timeout');
       }
 
@@ -165,7 +165,7 @@ class APIClient {
     return this.request<T>(endpoint, { ...config, method: 'DELETE' });
   }
 
-  // Upload with progress tracking
+  // Upload with progress tracking - React Native compatible
   async uploadWithProgress<T>(
     endpoint: string, 
     formData: FormData, 
@@ -174,68 +174,70 @@ class APIClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-
-      // Track upload progress
-      if (onProgress) {
-        xhr.upload.addEventListener('progress', (event) => {
-          if (event.lengthComputable) {
-            const progress = Math.round((event.loaded / event.total) * 100);
-            onProgress(progress);
-          }
+    try {
+      console.log('Upload URL:', url);
+      console.log('FormData entries:', Array.from(formData.entries()));
+      
+      // First test if backend is reachable with simple GET request
+      try {
+        const testResponse = await fetch(this.baseURL, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
         });
+        console.log('Backend reachability test:', testResponse.status, testResponse.statusText);
+      } catch (testError) {
+        console.log('Backend NOT reachable:', testError);
+        throw new APIError(`Cannot reach backend at ${this.baseURL}: ${(testError as Error).message}`);
+      }
+      
+      // Use fetch API for React Native compatibility
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          // Don't set Content-Type for FormData, let the browser/RN handle it
+          'Accept': 'application/json',
+        },
+        signal,
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          console.log('Error response:', errorData);
+          errorMessage = errorData.message || errorData.detail || errorMessage;
+        } catch {
+          // Use default error message
+        }
+        throw new APIError(errorMessage, response.status);
       }
 
-      // Handle completion
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            resolve(response);
-          } catch {
-            resolve({} as T);
-          }
-        } else {
-          let errorMessage = `HTTP ${xhr.status}: ${xhr.statusText}`;
-          try {
-            const errorData = JSON.parse(xhr.responseText);
-            errorMessage = errorData.message || errorData.detail || errorMessage;
-          } catch {
-            // Use default error message
-          }
-          reject(new APIError(errorMessage, xhr.status));
-        }
-      });
-
-      // Handle errors
-      xhr.addEventListener('error', () => {
-        reject(new APIError('Network error during upload'));
-      });
-
-      xhr.addEventListener('timeout', () => {
-        reject(new APIError('Upload timeout'));
-      });
-
-      // Handle abort
-      if (signal) {
-        signal.addEventListener('abort', () => {
-          xhr.abort();
-          reject(new APIError('Upload aborted'));
-        });
+      // Handle empty responses
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        return {} as T;
       }
 
-      // Set headers (don't set Content-Type for FormData)
-      Object.entries(this.defaultHeaders).forEach(([key, value]) => {
-        if (key !== 'Content-Type') {
-          xhr.setRequestHeader(key, value);
-        }
-      });
+      const result = await response.json();
+      console.log('Upload success:', result);
+      return result;
+    } catch (error) {
+      console.log('Upload error details:', error);
+      
+      if (error instanceof APIError) {
+        throw error;
+      }
 
-      // Send request
-      xhr.open('POST', url);
-      xhr.send(formData);
-    });
+      if ((error as any)?.name === 'AbortError') {
+        throw new APIError('Request timeout');
+      }
+
+      throw new APIError(`Network error during upload: ${(error as Error).message}`);
+    }
   }
 }
 

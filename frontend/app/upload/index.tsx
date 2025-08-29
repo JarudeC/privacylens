@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,9 +7,11 @@ import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/ui/Button';
 import Typography from '../../components/ui/Typography';
 import { UploadedVideo } from '../../lib/types/upload';
+import { videoUploadService } from '../../lib/services/videoUploadService';
 
 export default function UploadVideoScreen() {
   const router = useRouter();
+  const [isUploading, setIsUploading] = useState(false);
 
   const goHome = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -30,75 +32,141 @@ export default function UploadVideoScreen() {
   };
 
   const selectFromGallery = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+    try {
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) return;
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-      allowsEditing: true,
-      quality: 0.8,
-      videoMaxDuration: 60, // 60 seconds max
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const video: UploadedVideo = {
-        id: Date.now().toString(),
-        uri: asset.uri,
-        duration: asset.duration || 0,
-        width: asset.width || 0,
-        height: asset.height || 0,
-        size: asset.fileSize || 0,
-        fileName: asset.fileName,
-        mimeType: asset.mimeType,
-      };
-
-      router.push({
-        pathname: '/upload/preview',
-        params: { videoData: JSON.stringify(video) },
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: 0.8,
+        videoMaxDuration: 60,
       });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const video: UploadedVideo = {
+          id: Date.now().toString(),
+          uri: asset.uri,
+          duration: asset.duration || 0,
+          width: asset.width || 0,
+          height: asset.height || 0,
+          size: asset.fileSize || 0,
+          fileName: asset.fileName || `video_${Date.now()}.mp4`,
+          mimeType: asset.mimeType || 'video/mp4',
+        };
+
+        // Upload immediately after selection
+        setIsUploading(true);
+        try {
+          // Create FormData directly with React Native compatible approach
+          const formData = new FormData();
+          
+          // For React Native, we need to properly format the file object
+          const fileObject = {
+            uri: video.uri,
+            name: video.fileName || 'video.mp4',
+            type: video.mimeType || 'video/mp4',
+          };
+          
+          console.log('Gallery file object being uploaded:', fileObject);
+          formData.append('video', fileObject as any);
+
+          // Upload to backend and get analysis
+          const analysisResult = await videoUploadService.uploadAndAnalyzeFormData(formData);
+          
+          // Navigate to processing with real data
+          router.replace({
+            pathname: '/upload/processing',
+            params: { 
+              videoData: JSON.stringify(video),
+              analysisData: JSON.stringify(analysisResult)
+            },
+          });
+        } catch (error) {
+          console.error('Upload failed:', error);
+          setIsUploading(false);
+          Alert.alert('Upload Error', error instanceof Error ? error.message : 'Upload failed');
+        }
+      }
+    } catch (error) {
+      console.error('Error selecting from gallery:', error);
+      Alert.alert('Error', 'Failed to select video from gallery');
     }
   };
 
   const recordVideo = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission Required',
-        'We need access to your camera to record videos.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'We need access to your camera to record videos.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-      allowsEditing: true,
-      quality: 0.8,
-      videoMaxDuration: 60,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const video: UploadedVideo = {
-        id: Date.now().toString(),
-        uri: asset.uri,
-        duration: asset.duration || 0,
-        width: asset.width || 0,
-        height: asset.height || 0,
-        size: asset.fileSize || 0,
-        fileName: asset.fileName,
-        mimeType: asset.mimeType,
-      };
-
-      router.push({
-        pathname: '/upload/preview',
-        params: { videoData: JSON.stringify(video) },
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: 0.8,
+        videoMaxDuration: 60,
       });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const video: UploadedVideo = {
+          id: Date.now().toString(),
+          uri: asset.uri,
+          duration: asset.duration || 0,
+          width: asset.width || 0,
+          height: asset.height || 0,
+          size: asset.fileSize || 0,
+          fileName: asset.fileName || `recorded_${Date.now()}.mp4`,
+          mimeType: asset.mimeType || 'video/mp4',
+        };
+
+        // Upload immediately after recording
+        setIsUploading(true);
+        try {
+          // Create FormData directly with React Native compatible approach
+          const formData = new FormData();
+          
+          // For React Native, we need to properly format the file object
+          const fileObject = {
+            uri: video.uri,
+            name: video.fileName || 'video.mp4',
+            type: video.mimeType || 'video/mp4',
+          };
+          
+          console.log('Recorded file object being uploaded:', fileObject);
+          formData.append('video', fileObject as any);
+
+          // Upload to backend and get analysis
+          const analysisResult = await videoUploadService.uploadAndAnalyzeFormData(formData);
+          
+          // Navigate to processing with real data
+          router.replace({
+            pathname: '/upload/processing',
+            params: { 
+              videoData: JSON.stringify(video),
+              analysisData: JSON.stringify(analysisResult)
+            },
+          });
+        } catch (error) {
+          console.error('Upload failed:', error);
+          setIsUploading(false);
+          Alert.alert('Upload Error', error instanceof Error ? error.message : 'Upload failed');
+        }
+      }
+    } catch (error) {
+      console.error('Error recording video:', error);
+      Alert.alert('Error', 'Failed to record video');
     }
   };
 
@@ -134,17 +202,19 @@ export default function UploadVideoScreen() {
 
         <View className="w-full space-y-4" style={{ gap: 16 }}>
           <Button
-            title="Choose from Gallery"
+            title={isUploading ? "Uploading..." : "Choose from Gallery"}
             onPress={selectFromGallery}
             variant="primary"
             size="lg"
+            disabled={isUploading}
           />
           
           <Button
-            title="Record Video"
+            title={isUploading ? "Uploading..." : "Record Video"}
             onPress={recordVideo}
             variant="secondary"
             size="lg"
+            disabled={isUploading}
           />
         </View>
 

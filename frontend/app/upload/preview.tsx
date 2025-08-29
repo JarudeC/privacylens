@@ -33,8 +33,10 @@ export default function VideoPreviewScreen() {
   React.useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        player.play();
-        setIsPlaying(true);
+        if (player && typeof player.play === 'function') {
+          player.play();
+          setIsPlaying(true);
+        }
       } catch (error) {
         console.warn('Failed to play video:', error);
       }
@@ -46,11 +48,8 @@ export default function VideoPreviewScreen() {
         if (player && typeof player.pause === 'function') {
           player.pause();
         }
-        if (player && typeof player.release === 'function') {
-          player.release();
-        }
       } catch (error) {
-        console.warn('Failed to cleanup video player:', error);
+        console.warn('Failed to pause video player:', error);
       }
     };
   }, [player]);
@@ -61,12 +60,10 @@ export default function VideoPreviewScreen() {
         try {
           if (player && typeof player.pause === 'function') {
             player.pause();
-          }
-          if (player && typeof player.release === 'function') {
-            player.release();
+            setIsPlaying(false);
           }
         } catch (error) {
-          console.warn('Failed to cleanup video player on focus loss:', error);
+          console.warn('Failed to pause video player on focus loss:', error);
         }
       };
     }, [player])
@@ -101,26 +98,23 @@ export default function VideoPreviewScreen() {
       // Cleanup video player
       if (player && typeof player.pause === 'function') {
         player.pause();
-      }
-      if (player && typeof player.release === 'function') {
-        player.release();
+        setIsPlaying(false);
       }
     } catch (error) {
-      console.warn('Failed to cleanup video player before navigation:', error);
+      console.warn('Failed to pause video player before navigation:', error);
     }
-    
-    setIsPlaying(false);
-
-    // Create File object from URI for upload
-    const response = await fetch(video.uri);
-    const blob = await response.blob();
-    const file = new File([blob], video.fileName || 'video.mp4', {
-      type: video.mimeType || 'video/mp4',
-    });
 
     try {
+      // Create FormData directly with React Native compatible approach
+      const formData = new FormData();
+      formData.append('video', {
+        uri: video.uri,
+        name: video.fileName || 'video.mp4',
+        type: video.mimeType || 'video/mp4',
+      } as any);
+
       // Upload to backend and get analysis
-      const analysisResult = await videoUploadService.uploadAndAnalyze(file);
+      const analysisResult = await videoUploadService.uploadAndAnalyzeFormData(formData);
       
       // Navigate to processing with real data
       router.replace({
