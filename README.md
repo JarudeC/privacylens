@@ -1,26 +1,26 @@
-# Portfolio Pilot - AI-Enhanced Full Stack Portfolio Construction Platform
+# PrivacyLens – Pre‑Upload Sensitive Info Scanner for Mobile Videos
 
-A full-stack web application for portfolio optimization using machine learning, classical algorithms, and custom AI-generated strategies powered by Anthropic Claude.
+React Native mobile app + FastAPI backend that scans videos before users upload them. It flags frames containing sensitive info (e.g., credit card numbers), shows the evidence, and lets users either continue with the original video or switch to an automatically blurred version.
 
 ## Tech Stack & Skills Implemented
 
 **Frontend:**
-- Next.js 15 with TypeScript
-- React with hooks and context API
-- Tailwind CSS for styling
-- Recharts for data visualization
-- Axios for API calls
-- Anthropic Claude SDK integration
+- React Native (Expo)
+- React hooks & Context API
+- Expo Router (optional)
+- Fetch/Axios for API calls
+- In‑app notifications/toasts
+- Local preview player for flagged frames
 
 **Backend:**
 - FastAPI with Python
-- Machine Learning models (ARIMA, LSTM, Autoformer)
+- CORS and request validation (Pydantic)
 - Portfolio optimization algorithms (Markowitz, GMVP, Reinforcement Learning)
 - NumPy, Pandas, Scikit-learn, PyTorch for data processing
 
-**Database & Authentication:**
-- Supabase (OAuth and PostgreSQL)
-- JWT token management
+**Build & Dev:**
+- Expo CLI for mobile dev & preview
+- Uvicorn for local API
 
 ## Project Overview
 
