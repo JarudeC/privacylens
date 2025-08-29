@@ -41,6 +41,9 @@ import base64
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
+# Get base URL from environment or default to localhost for development
+BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
+
 # Create directories for file storage
 UPLOAD_DIR = Path("uploads")
 PROCESSED_DIR = Path("processed")
@@ -96,7 +99,7 @@ def create_mock_frame_image(frame_id: str, pii_types: List[str]) -> str:
     frame_path = FRAMES_DIR / f"{frame_id}.jpg"
     img.save(frame_path)
     
-    return f"http://localhost:8000/frames/{frame_id}.jpg"
+    return f"{BASE_URL}/frames/{frame_id}.jpg"
 
 # Pydantic models for request/response
 class PIIDetection(BaseModel):
@@ -326,7 +329,7 @@ async def create_protected_video(request: ProtectionRequest):
     video_storage[request.videoId]["protection_time"] = time.time()
     
     # ✅ WORKING: Return URL to serve protected video
-    protected_video_uri = f"http://localhost:8000/protected/{protected_filename}"
+    protected_video_uri = f"{BASE_URL}/protected/{protected_filename}"
     
     print(f"✅ Created protected video: {protected_video_uri}")
     

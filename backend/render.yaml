@@ -10,3 +10,5 @@ services:
         value: 3.11.5
       - key: ENVIRONMENT
         value: production
+      - key: BASE_URL
+        value: https://privacylens.onrender.com
