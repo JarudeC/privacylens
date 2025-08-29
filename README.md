@@ -28,29 +28,11 @@ Portfolio Pilot allows users to build and optimize investment portfolios using a
 
 ### Key Features
 
-- **Pre-built Algorithms**: Choose from proven portfolio optimization and forecasting models
-- **Real-time Backtesting**: Test strategies against historical data with comprehensive performance metrics
-- **Interactive Visualizations**: View portfolio compositions, equity curves, and forecast charts
-- **Session History**: Track and compare all your strategy experiments
+- **Pre‑Upload Scanning**: Catch leaks before they hit the internet
+- **Evidence Review**: See flagged frames with bounding boxes and labels
+- **1‑Tap Redaction**: Auto‑blur sensitive regions; re‑preview instantly
+- **Asynchronous Processing**: Submit → poll progress → fetch results; no WebSockets/queues required
   
-**Home Page** - Landing page with hero section, feature showcase, algorithm overview, and call-to-action elements.
-
-https://github.com/user-attachments/assets/5321954a-5d97-45d7-9c7b-e68909ab53b1
-
-**Dashboard** - Interactive interface for stock selection and model training initiation.
-
-![dashboard](https://github.com/user-attachments/assets/2985319e-233c-435c-8f51-cdf9a873e09d)
-
-**Custom AI Strategies**: Leverage Anthropic Claude to generate bespoke investment algorithms based on natural language descriptions
-
-![custom ai model 1](https://github.com/user-attachments/assets/acc141fd-f2a1-4b98-b1f8-c70076b35f64)
-
-![custom ai model 2](https://github.com/user-attachments/assets/d10bf847-97ab-4cec-a2a1-3a7b804dbf4b)
-
-**History** - View past training results and portfolio performance analytics.
-
-![history](https://github.com/user-attachments/assets/d0081d65-f069-469c-b3ff-11e396194c5b)
-
 ## Project Structure
 
 ```
