@@ -48,9 +48,9 @@ DEPLOYMENT:
 - Static file serving for frames and protected videos
 """
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List
@@ -87,9 +87,76 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files for frames and protected videos
+# Serve frame images (static files work fine for images)
 app.mount("/frames", StaticFiles(directory="frames"), name="frames")
-app.mount("/protected", StaticFiles(directory="processed"), name="protected")
+
+# Custom video streaming endpoint for protected videos
+@app.get("/protected/{filename}")
+async def stream_protected_video(filename: str, request: Request):
+    """
+    🎥 STREAMING VIDEO ENDPOINT - Serves protected videos with proper HTTP range headers
+    
+    Supports:
+    - Range requests for video streaming
+    - Proper MIME types for video files  
+    - CORS headers for React Native
+    - Large file streaming without memory issues
+    
+    This replaces the static file mount for /protected to handle video streaming properly
+    """
+    video_path = PROCESSED_DIR / filename
+    
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail="Protected video not found")
+    
+    # Get file stats
+    file_size = video_path.stat().st_size
+    
+    # Handle range requests for video streaming
+    range_header = request.headers.get("Range")
+    
+    if range_header:
+        # Parse range header (e.g., "bytes=0-1023" or "bytes=0-")
+        try:
+            range_match = range_header.replace("bytes=", "")
+            start, end = range_match.split("-")
+            start = int(start) if start else 0
+            end = int(end) if end else file_size - 1
+            end = min(end, file_size - 1)
+        except:
+            start, end = 0, file_size - 1
+            
+        # Read the requested chunk
+        with open(video_path, "rb") as video_file:
+            video_file.seek(start)
+            chunk_size = end - start + 1
+            chunk = video_file.read(chunk_size)
+            
+        headers = {
+            "Content-Range": f"bytes {start}-{end}/{file_size}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(chunk_size),
+            "Content-Type": "video/mp4",
+            "Cache-Control": "no-cache",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Range, Content-Type",
+        }
+        
+        return Response(chunk, status_code=206, headers=headers)
+    
+    else:
+        # No range request, serve entire file
+        return FileResponse(
+            video_path,
+            media_type="video/mp4", 
+            headers={
+                "Accept-Ranges": "bytes",
+                "Content-Type": "video/mp4",
+                "Cache-Control": "no-cache",
+                "Access-Control-Allow-Origin": "*",
+                "Content-Length": str(file_size)
+            }
+        )
 
 def extract_video_frame(video_path: str, frame_id: str, timestamp_seconds: float, pii_types: List[str]) -> str:
     """
@@ -146,21 +213,25 @@ def extract_video_frame(video_path: str, frame_id: str, timestamp_seconds: float
         # 🚀 AI TEAM TODO: Replace this mock section with YOLO detection
         # MOCK PII detection annotations (REMOVE when integrating YOLO)
         draw = ImageDraw.Draw(img)
-        y_offset = 50
         colors = {'credit_card': 'red', 'id_card': 'orange', 'address': 'blue'}
         
+        # MOCK: Vary positions based on timestamp to make frames visually distinct
+        base_x = int(50 + (timestamp_seconds * 30))  # Offset based on timestamp
+        base_y = int(50 + (timestamp_seconds * 20))
+        
         # MOCK: Remove this loop and replace with YOLO results
-        for pii_type in pii_types:
+        for i, pii_type in enumerate(pii_types):
             color = colors.get(pii_type, 'purple')
-            # MOCK: Draw fake PII detection box (replace with real YOLO bounding boxes)
-            box = [50, y_offset, 300, y_offset + 40]
+            # MOCK: Vary position for each detection and timestamp
+            x_offset = base_x + (i * 20)
+            y_offset = base_y + (i * 60)
+            box = [x_offset, y_offset, x_offset + 250, y_offset + 40]
             draw.rectangle(box, outline=color, width=3)
             try:
-                draw.text((60, y_offset + 10), f"{pii_type.upper()} DETECTED", fill=color)
+                draw.text((x_offset + 10, y_offset + 10), f"{pii_type.upper()} @ {timestamp_seconds}s", fill=color)
             except:
                 # Fallback if no font available
                 pass
-            y_offset += 60
             
         # 🚀 AI TEAM TODO: Replace above with:
         # for detection in yolo_results:

@@ -47,6 +47,12 @@ class VideoUploadService {
     piiToProtect: ProtectionRequest['piiFrames']
   ): Promise<ProtectionResponse> {
     try {
+      console.log('🔐 Calling /api/v1/video/protect with:', {
+        videoId,
+        piiFramesCount: piiToProtect.length,
+        firstFrame: piiToProtect[0]
+      });
+      
       const response = await apiClient.post<ProtectionResponse>(
         '/api/v1/video/protect',
         {
@@ -54,6 +60,8 @@ class VideoUploadService {
           piiFrames: piiToProtect
         }
       );
+      
+      console.log('🔐 Protection API response:', response);
       return response;
     } catch (error) {
       console.error('Video protection failed:', error);

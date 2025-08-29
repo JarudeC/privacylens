@@ -21,13 +21,24 @@ export default function BlurredPreviewScreen() {
   const video: UploadedVideo = JSON.parse(videoData);
   const response: BackendResponse = JSON.parse(responseData);
 
-  // Use the blurred video URI from backend response
+  // Use the protected video URI from backend response (now with streaming support)
   const blurredVideoUri = response.processedVideoUri || video.uri;
 
   const player = useVideoPlayer(blurredVideoUri, (player) => {
     player.loop = true;
     player.muted = false;
   });
+
+  // Add error handling for video loading
+  React.useEffect(() => {
+    if (player) {
+      player.addListener('statusChange', (status) => {
+        if (status.error) {
+          console.error('Video player error:', status.error);
+        }
+      });
+    }
+  }, [player]);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -165,6 +176,8 @@ export default function BlurredPreviewScreen() {
             allowsFullscreen={false}
             allowsPictureInPicture={false}
             contentFit="contain"
+            onLoad={() => console.log('✅ Protected video loaded successfully')}
+            onError={(error) => console.error('❌ Protected video failed to load:', error)}
           />
           
           {/* Play/Pause Overlay */}
