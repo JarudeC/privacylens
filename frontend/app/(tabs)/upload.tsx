@@ -1,13 +1,13 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
-const UploadScreen: React.FC = () => {
-  return (
-    <View style={{ flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 'bold' }}>Upload Flow</Text>
-      <Text style={{ color: '#8A8A8A', fontSize: 14, marginTop: 8 }}>Coming Soon</Text>
-    </View>
-  );
-};
+export default function UploadScreen() {
+  const router = useRouter();
 
-export default UploadScreen;
+  useEffect(() => {
+    // Immediately redirect to upload flow
+    router.replace('/upload');
+  }, []);
+
+  return null;
+}

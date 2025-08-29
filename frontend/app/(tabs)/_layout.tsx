@@ -49,19 +49,11 @@ export default function TabLayout() {
           tabBarIcon: ({ size }) => (
             <Ionicons name="add" size={size} color="#FFFFFF" />
           ),
-          tabBarButton: () => (
+          tabBarButton: ({ onPress }) => (
             <View className="flex-1 justify-center items-center" style={{ paddingBottom: 12 }}>
-              <FloatingActionButton onPress={() => {
-                console.log('Upload button pressed - will navigate to upload flow');
-              }} />
+              <FloatingActionButton onPress={onPress} />
             </View>
           ),
-        }}
-        listeners={{
-          tabPress: (e) => {
-            e.preventDefault();
-            console.log('Upload button pressed - will navigate to upload flow');
-          },
         }}
       />
       <Tabs.Screen

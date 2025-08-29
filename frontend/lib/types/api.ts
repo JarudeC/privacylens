@@ -1,37 +1,40 @@
+// Simple API types based on actual frontend needs
+
+// Video Upload - First POST request
 export interface VideoUploadResponse {
-  id: string;
-  status: 'processing' | 'completed' | 'failed';
-  progressPercentage: number;
-  flaggedItems?: FlaggedItem[];
-}
-
-export interface FlaggedItem {
-  id: string;
-  type: 'credit_card' | 'identity_card' | 'address';
-  severity: 'low' | 'medium' | 'high';
-  description: string;
-  timestamp: number;
-  thumbnailUrl?: string;
-  confidence: number;
-}
-
-export interface UploadRequest {
-  videoUri: string;
-  caption: string;
-  userId: string;
-}
-
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-}
-
-export interface VideoAnalysisResult {
   videoId: string;
-  analysisComplete: boolean;
-  flaggedItems: FlaggedItem[];
+  piiFrames: PIIFrame[];
+  totalFramesAnalyzed: number;
   processingTime: number;
-  overallRisk: 'low' | 'medium' | 'high';
+}
+
+// PII Detection (what frontend already uses)
+export interface PIIDetection {
+  type: 'credit_card' | 'id_card' | 'address';
+  confidence: number;
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+}
+
+export interface PIIFrame {
+  id: string;
+  frameUri: string; // Image URL from backend
+  timestamp: number;
+  detections: PIIDetection[];
+}
+
+// Protection Request - Second POST request
+export interface ProtectionRequest {
+  videoId: string;
+  piiFrames: PIIFrame[]; // Only the objects user wants to blur
+}
+
+export interface ProtectionResponse {
+  protectedVideoUri: string; // The blurred video URL
+}
+
+// Error handling
+export interface APIError {
+  message: string;
+  code?: string;
 }
