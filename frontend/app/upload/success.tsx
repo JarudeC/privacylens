@@ -36,19 +36,14 @@ export default function UploadSuccessScreen() {
   };
 
   const getIssuesSummary = () => {
-    const types = response.piiFrames.reduce((acc, frame) => {
-      frame.detections.forEach(detection => {
-        if (!acc.includes(detection.type)) {
-          acc.push(detection.type);
-        }
-      });
-      return acc;
-    }, [] as string[]);
+    const types = [...new Set(response.piiFrames.flatMap(frame => 
+      frame.detections.map(detection => detection.type)
+    ))];
 
     return types.map(type => {
       switch (type) {
         case 'credit_card': return 'Credit Cards';
-        case 'car_plate': return 'License Plates';
+        case 'car_plate': return 'Car Plates';
         default: return type;
       }
     }).join(', ');

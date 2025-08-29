@@ -221,18 +221,18 @@ export default function BlurredPreviewScreen() {
           </Typography>
           
           <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-            {response.piiFrames.map((frame, index) => 
-              frame.detections.map((detection, detectionIndex) => (
-                <View 
-                  key={`${index}-${detectionIndex}`}
-                  className="bg-gray-800 rounded-full px-3 py-1"
-                >
-                  <Typography variant="caption" className="text-white">
-                    {getDetectionLabel(detection.type)}
-                  </Typography>
-                </View>
-              ))
-            ).flat()}
+            {[...new Set(response.piiFrames.flatMap(frame => 
+              frame.detections.map(detection => detection.type)
+            ))].map((type, index) => (
+              <View 
+                key={index}
+                className="bg-gray-800 rounded-full px-3 py-1"
+              >
+                <Typography variant="caption" className="text-white">
+                  {getDetectionLabel(type)}
+                </Typography>
+              </View>
+            ))}
           </View>
         </View>
 
