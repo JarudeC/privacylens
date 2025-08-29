@@ -29,9 +29,7 @@ def process_video(video_path: str, conf: float, save: bool = True):
     results = model.track(
         source=video_path,
         conf=conf,
-        persist=True,
         save=save,
-        save_crop=save,
         show=True
     )
 
