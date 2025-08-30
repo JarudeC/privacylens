@@ -16,6 +16,6 @@ def detect_video(input_video_path, model_path):
 
     for result in results:
         frame = result.orig_img.copy()
-        results_data.append((frame, result))
+        results_data.append((frame, re1 sult))
 
     return results_data
