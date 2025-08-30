@@ -175,8 +175,13 @@ class APIClient {
     const url = `${this.baseURL}${endpoint}`;
 
     try {
-      console.log('Upload URL:', url);
-      console.log('FormData entries:', Array.from(formData.entries()));
+      console.log('📤 Starting upload:', {
+        url,
+        formDataEntries: Array.from(formData.entries()).map(([key, value]) => [
+          key, 
+          value instanceof File ? `File: ${value.name} (${value.size} bytes)` : value
+        ])
+      });
       
       // First test if backend is reachable with simple GET request
       try {
@@ -186,7 +191,13 @@ class APIClient {
         });
         console.log('Backend reachability test:', testResponse.status, testResponse.statusText);
       } catch (testError) {
-        console.log('Backend NOT reachable:', testError);
+        console.error('❌ Backend connectivity test failed:', {
+          url: this.baseURL,
+          error: testError,
+          message: (testError as Error).message,
+          name: (testError as Error).name,
+          stack: (testError as Error).stack
+        });
         throw new APIError(`Cannot reach backend at ${this.baseURL}: ${(testError as Error).message}`);
       }
       
@@ -201,17 +212,31 @@ class APIClient {
         signal,
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('📥 Upload response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        ok: response.ok
+      });
 
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         try {
           const errorData = await response.json();
-          console.log('Error response:', errorData);
+          console.error('❌ Server error response:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+          });
           errorMessage = errorData.message || errorData.detail || errorMessage;
-        } catch {
-          // Use default error message
+        } catch (parseError) {
+          console.error('❌ Failed to parse error response:', parseError);
+          try {
+            const errorText = await response.text();
+            console.error('❌ Raw error response:', errorText);
+          } catch {
+            console.error('❌ Could not read error response body');
+          }
         }
         throw new APIError(errorMessage, response.status);
       }

@@ -48,6 +48,8 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive }) => {
         allowsFullscreen={false}
         allowsPictureInPicture={false}
         contentFit="cover"
+        showsTimecodes={false}
+        requiresLinearPlayback={false}
       />
 
       {/* Overlay Controls */}
