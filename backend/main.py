@@ -234,6 +234,9 @@ async def upload_and_analyze_video(video: UploadFile = File(...)):
         shutil.copyfileobj(video.file, buffer)
     logging.info(f"Saved uploaded video to: {file_path}")
     
+    # Convert .mov to .mp4 if necessary
+    file_path = convert_mov_to_mp4(file_path)
+    
     # Start processing
     start_time = time.time()
     
@@ -363,6 +366,27 @@ async def global_exception_handler(request, exc):
             }
         }
     )
+
+def convert_mov_to_mp4(input_path: Path) -> Path:
+    """
+    Converts a .mov video file to .mp4 using ffmpeg.
+    Returns the new .mp4 file path.
+    """
+    if input_path.suffix.lower() != ".mov":
+        return input_path  # No conversion needed
+
+    mp4_path = input_path.with_suffix(".mp4")
+    import subprocess
+    try:
+        subprocess.run([
+            "ffmpeg", "-y", "-i", str(input_path),
+            "-c:v", "libx264", "-c:a", "aac", str(mp4_path)
+        ], check=True)
+    except Exception as e:
+        import logging
+        logging.error(f"ffmpeg conversion failed: {e}")
+        raise RuntimeError(f"Failed to convert .mov to .mp4: {e}")
+    return mp4_path
 
 if __name__ == "__main__":
     import uvicorn
