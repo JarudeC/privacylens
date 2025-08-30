@@ -1,10 +1,8 @@
-export * from './navigation';
 export * from './api';
 
 export interface VideoData {
   id: string;
   uri: any;
-  thumbnail?: string;
   duration: number;
   caption: string;
   likes: number;
@@ -13,7 +11,6 @@ export interface VideoData {
   author: {
     id: string;
     username: string;
-    avatar?: string;
     verified: boolean;
   };
   isLiked: boolean;

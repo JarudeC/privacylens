@@ -201,9 +201,7 @@ export default function BlurredPreviewScreen() {
         </View>
       </View>
 
-      {/* Bottom Section */}
       <View className="px-6 pb-12">
-        {/* Info Card */}
         <View className="bg-green-900/20 rounded-2xl p-4 mb-6 border border-green-500/30">
           <View className="flex-row items-center mb-3">
             <Ionicons name="shield-checkmark" size={24} color="#4CAF50" />
@@ -236,7 +234,6 @@ export default function BlurredPreviewScreen() {
           </View>
         </View>
 
-        {/* Upload Actions */}
         <View className="space-y-3" style={{ gap: 12 }}>
           <Button
             title="Upload Protected Video"

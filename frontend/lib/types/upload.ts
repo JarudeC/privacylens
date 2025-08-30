@@ -9,19 +9,8 @@ export interface UploadedVideo {
   mimeType?: string;
 }
 
-export interface PIIDetection {
-  type: 'credit_card' | 'id_card' | 'address';
-  confidence: number;
-  description: string;
-  severity: 'low' | 'medium' | 'high';
-}
-
-export interface PIIFrame {
-  id: string;
-  frameUri: string; // Snapshot image from backend
-  timestamp: number; // Time in video where PII was detected
-  detections: PIIDetection[]; // What PII was found in this frame
-}
+// Use shared types from api.ts
+export type { PIIDetection, PIIFrame } from './api';
 
 export interface BackendResponse {
   videoId: string;

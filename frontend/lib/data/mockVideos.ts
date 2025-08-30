@@ -4,7 +4,6 @@ export const mockVideos: VideoData[] = [
   {
     id: '1',
     uri: require('../../assets/videos/tiktok1.mp4'),
-    thumbnail: require('../../assets/images/react-logo.png'),
     duration: 15000,
     caption: 'Buy now, regret later… if you steal my card…',
     likes: 12400,
@@ -13,7 +12,6 @@ export const mockVideos: VideoData[] = [
     author: {
       id: 'user1',
       username: 'swipe_king',
-      avatar: require('../../assets/images/adaptive-icon.png'),
       verified: true
     },
     isLiked: false,
@@ -22,7 +20,6 @@ export const mockVideos: VideoData[] = [
   {
     id: '2',
     uri: require('../../assets/videos/tiktok2.mp4'),
-    thumbnail: require('../../assets/images/react-logo.png'),
     duration: 23000,
     caption: 'I think privacylens will win too!',
     likes: 8900,
@@ -31,7 +28,6 @@ export const mockVideos: VideoData[] = [
     author: {
       id: 'user2',
       username: 'privacylensfan',
-      avatar: require('../../assets/images/adaptive-icon.png'),
       verified: false
     },
     isLiked: true,
@@ -40,7 +36,6 @@ export const mockVideos: VideoData[] = [
   {
     id: '3',
     uri: require('../../assets/videos/tiktok3.mp4'),
-    thumbnail: require('../../assets/images/react-logo.png'),
     duration: 18000,
     caption: 'Secure vibes only… kinda 🔒😂',
     likes: 15600,
@@ -49,7 +44,6 @@ export const mockVideos: VideoData[] = [
     author: {
       id: 'user3',
       username: 'studystruggle',
-      avatar: require('../../assets/images/adaptive-icon.png'),
       verified: true
     },
     isLiked: false,

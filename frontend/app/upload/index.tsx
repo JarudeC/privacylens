@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/ui/Button';
 import Typography from '../../components/ui/Typography';
 import { UploadedVideo } from '../../lib/types/upload';
-import { videoUploadService } from '../../lib/services/videoUploadService';
 
 export default function UploadVideoScreen() {
   const router = useRouter();

@@ -6,7 +6,7 @@ import * as Haptics from 'expo-haptics';
 import Button from '../../components/ui/Button';
 import Typography from '../../components/ui/Typography';
 import { videoUploadService } from '../../lib/services/videoUploadService';
-import { UploadedVideo, BackendResponse, PIIFrame, Detection } from '../../lib/types/upload';
+import { UploadedVideo, BackendResponse, PIIFrame } from '../../lib/types/upload';
 
 const { width: screenWidth } = Dimensions.get('window');
 

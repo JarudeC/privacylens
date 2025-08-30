@@ -36,12 +36,6 @@ export default function UploadLayout() {
         }}
       />
       <Stack.Screen 
-        name="blur-processing" 
-        options={{
-          title: 'Blur Processing',
-        }}
-      />
-      <Stack.Screen 
         name="blurred-preview" 
         options={{
           title: 'Blurred Preview',
