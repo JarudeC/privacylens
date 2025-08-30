@@ -173,70 +173,58 @@ class APIClient {
     signal?: AbortSignal
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
+    const startTime = Date.now();
 
     try {
-      console.log('Upload URL:', url);
-      console.log('FormData entries:', Array.from(formData.entries()));
-      
-      // First test if backend is reachable with simple GET request
-      try {
-        const testResponse = await fetch(this.baseURL, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' }
+        // Add timeout for Render's 30s limit
+        const timeoutSignal = AbortSignal.timeout(29000); // 29s to be safe
+        const combinedSignal = signal 
+            ? AbortSignal.any([signal, timeoutSignal])
+            : timeoutSignal;
+
+        console.log('Starting upload, size:', formData.get('video')?.size);
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            signal: combinedSignal
         });
-        console.log('Backend reachability test:', testResponse.status, testResponse.statusText);
-      } catch (testError) {
-        console.log('Backend NOT reachable:', testError);
-        throw new APIError(`Cannot reach backend at ${this.baseURL}: ${(testError as Error).message}`);
-      }
-      
-      // Use fetch API for React Native compatibility
-      const response = await fetch(url, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          // Don't set Content-Type for FormData, let the browser/RN handle it
-          'Accept': 'application/json',
-        },
-        signal,
-      });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+        console.log('Upload took:', (Date.now() - startTime)/1000, 'seconds');
 
-      if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        try {
-          const errorData = await response.json();
-          console.log('Error response:', errorData);
-          errorMessage = errorData.message || errorData.detail || errorMessage;
-        } catch {
-          // Use default error message
+        if (!response.ok) {
+          let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          try {
+            const errorData = await response.json();
+            console.log('Error response:', errorData);
+            errorMessage = errorData.message || errorData.detail || errorMessage;
+          } catch {
+            // Use default error message
+          }
+          throw new APIError(errorMessage, response.status);
         }
-        throw new APIError(errorMessage, response.status);
-      }
 
-      // Handle empty responses
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        return {} as T;
-      }
+        // Handle empty responses
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          return {} as T;
+        }
 
-      const result = await response.json();
-      console.log('Upload success:', result);
-      return result;
+        const result = await response.json();
+        console.log('Upload success:', result);
+        return result;
     } catch (error) {
-      console.log('Upload error details:', error);
-      
-      if (error instanceof APIError) {
-        throw error;
-      }
+        console.log('Upload failed after:', (Date.now() - startTime)/1000, 'seconds');
+        
+        if (error instanceof APIError) {
+          throw error;
+        }
 
-      if ((error as any)?.name === 'AbortError') {
-        throw new APIError('Request timeout');
-      }
+        if ((error as any)?.name === 'AbortError') {
+          throw new APIError('Request timeout');
+        }
 
-      throw new APIError(`Network error during upload: ${(error as Error).message}`);
+        throw new APIError(`Network error during upload: ${(error as Error).message}`);
     }
   }
 }
