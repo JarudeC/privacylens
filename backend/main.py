@@ -89,6 +89,21 @@ print("🚀 PrivacyLens API starting up...", flush=True)
 print(f"🚀 Base URL: {BASE_URL}", flush=True)
 print(f"🚀 Model path: {MODEL_PATH}", flush=True)
 print(f"🚀 Model exists: {os.path.exists(MODEL_PATH)}", flush=True)
+
+# Pre-load YOLO model at startup to avoid per-request timeouts
+global_yolo_model = None
+try:
+    if os.path.exists(MODEL_PATH):
+        print("🤖 Loading YOLO model at startup...", flush=True)
+        from ultralytics import YOLO
+        global_yolo_model = YOLO(MODEL_PATH)
+        print("🤖 YOLO model loaded successfully at startup!", flush=True)
+    else:
+        print("❌ Model file not found, will use fallback frames", flush=True)
+except Exception as e:
+    print(f"❌ Failed to load YOLO model at startup: {e}", flush=True)
+    global_yolo_model = None
+
 sys.stderr.write("BACKEND STARTUP: PrivacyLens API initialized\n")
 sys.stderr.flush()
 
@@ -224,28 +239,14 @@ def extract_video_frame(video_path: str, frame_id: str, timestamp_seconds: float
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(frame_rgb)
         
-        # 🚀 AI INTEGRATION: Real YOLO detection
-        try:
-            print(f"🤖 Loading YOLO model from: {MODEL_PATH}")
-            print(f"🤖 Model file exists: {os.path.exists(MODEL_PATH)}")
-            if os.path.exists(MODEL_PATH):
-                print(f"🤖 Model file size: {os.path.getsize(MODEL_PATH)} bytes")
-            
-            from ultralytics import YOLO
-            print(f"🤖 Ultralytics imported successfully")
-            
-            # Load YOLO model
-            model = YOLO(MODEL_PATH)
-            print(f"🤖 YOLO model loaded successfully")
-        except ImportError as e:
-            print(f"❌ Failed to import ultralytics: {e}")
-            raise Exception(f"YOLO dependencies not installed: {e}")
-        except Exception as e:
-            print(f"❌ Failed to load YOLO model: {e}")
-            print(f"❌ Model path: {MODEL_PATH}")
-            print(f"❌ Working directory: {os.getcwd()}")
-            print(f"❌ Files in models dir: {list(Path('models').glob('*')) if Path('models').exists() else 'models dir not found'}")
-            raise Exception(f"YOLO model loading failed: {e}")
+        # 🚀 AI INTEGRATION: Use pre-loaded YOLO model
+        if global_yolo_model is not None:
+            print(f"🤖 Using pre-loaded YOLO model", flush=True)
+            model = global_yolo_model
+        else:
+            print(f"❌ No YOLO model available, using fallback", flush=True)
+            cap.release()
+            return create_fallback_frame(frame_id, pii_types)
         
         # Run detection on the frame
         results = model(frame_rgb)
