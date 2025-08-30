@@ -68,6 +68,7 @@ import subprocess
 from pipeline.blur import blur_video
 from pipeline.detect import detect_video
 from pipeline.extract import process_video
+import logging
 
 # Get base URL from environment or default to localhost for development
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
@@ -200,36 +201,29 @@ async def root():
 
 @app.post("/api/v1/video/upload", response_model=VideoUploadResponse)
 async def upload_and_analyze_video(video: UploadFile = File(...)):
-    """
-    🎯 FIRST POST ENDPOINT: Upload video and return PII analysis
-    
-    FRONTEND SENDS: Video file (FormData)
-    BACKEND RETURNS: { videoId, piiFrames[], totalFramesAnalyzed, processingTime }
-    
-    ✅ CURRENT IMPLEMENTATION:
-    - Saves video file ✅ 
-    - Extracts real frames at 1,2,3 seconds ✅
-    - Returns mock PII detections with real frame images ✅
-    
-    🚀 AI TEAM TODO:
-    1. SMART FRAME SELECTION: Replace fixed 1,2,3 second timestamps
-       - Current: lines 274-276 (fixed timestamps)
-       - Replace: Scan entire video with YOLO, select frames with highest PII probability
-       - Method: Run lightweight YOLO pass on every Nth frame, rank by detection count/confidence
-    
-    2. REAL PII DETECTION: Replace mock detection data  
-       - Current: lines 279-325 (mock PIIFrame objects)
-       - Replace: Use real YOLO detection results from extract_video_frame()
-       - Return: Real confidence scores, bounding boxes, classifications
-    
-    3. PERFORMANCE OPTIMIZATION:
-       - Add video processing progress callbacks
-       - Implement frame caching for repeated analysis
-       - Add GPU acceleration if available
-    """
-    
-    if not video.content_type or not video.content_type.startswith('video/'):
-        raise HTTPException(status_code=400, detail="File must be a video")
+    logging.info(f"Received file: {video.filename}, content_type: {video.content_type}")
+
+    file_path = UPLOAD_DIR / f"{video.filename}"
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(video.file, buffer)
+    logging.info(f"Saved file to: {file_path}")
+
+    # Log file extension
+    logging.info(f"File extension: {file_path.suffix.lower()}")
+
+    # Try to open with OpenCV and log shape
+    import cv2
+    cap = cv2.VideoCapture(str(file_path))
+    if not cap.isOpened():
+        logging.error(f"OpenCV failed to open video: {file_path}")
+    else:
+        logging.info(f"OpenCV successfully opened video: {file_path}")
+        ret, frame = cap.read()
+        if ret:
+            logging.info(f"First frame shape: {frame.shape}")
+        else:
+            logging.error("Failed to read first frame from video.")
+        cap.release()
     
     # Generate unique video ID
     video_id = str(uuid.uuid4())
@@ -238,14 +232,7 @@ async def upload_and_analyze_video(video: UploadFile = File(...)):
     file_path = UPLOAD_DIR / f"{video_id}_{video.filename}" 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(video.file, buffer)
-
-# Convert .mov to .mp4 if needed
-    if file_path.suffix.lower() == ".mov":
-        mp4_path = file_path.with_suffix(".mp4")
-        subprocess.run([
-            "ffmpeg", "-y", "-i", str(file_path), str(mp4_path)
-        ], check=True)
-        file_path = mp4_path 
+    logging.info(f"Saved uploaded video to: {file_path}")
     
     # Start processing
     start_time = time.time()
