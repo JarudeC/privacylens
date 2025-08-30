@@ -60,19 +60,19 @@ PrivacyLens enhances the traditional video sharing workflow by implementing inte
 
 ```
 privacylens/
-├─ frontend/                    ← React Native Mobile App
-│   ├─ app/                    ← Expo Router screens
-│   │   ├─ (tabs)/            ← Tab navigation screens
-│   │   └─ upload/            ← Video upload flow screens
-│   ├─ components/            ← Reusable UI components
-│   │   ├─ ui/               ← Base UI components
-│   │   └─ upload/           ← Upload-specific components
-│   ├─ lib/                  ← Utilities and configurations
-│   │   ├─ services/         ← API services
-│   │   ├─ types/            ← TypeScript definitions
-│   │   └─ data/             ← Mock data for development
-│   └─ assets/               ← Images, videos, fonts
-├─ backend/                   ← Python FastAPI Server
+├─ frontend/                ← React Native Mobile App
+│   ├─ app/                 ← Expo Router screens
+│   │   ├─ (tabs)/          ← Tab navigation screens
+│   │   └─ upload/          ← Video upload flow screens
+│   ├─ components/          ← Reusable UI components
+│   │   ├─ ui/              ← Base UI components
+│   │   └─ upload/          ← Upload-specific components
+│   ├─ lib/                 ← Utilities and configurations
+│   │   ├─ services/        ← API services
+│   │   ├─ types/           ← TypeScript definitions
+│   │   └─ data/            ← Mock data for development
+│   └─ assets/              ← Images, videos, fonts
+├─ backend/                 ← Python FastAPI Server
 │   ├─ main.py              ← FastAPI application entry point
 │   ├─ requirements.txt     ← Python dependencies
 │   ├─ models/              ← Fintuned AI computer vision models
