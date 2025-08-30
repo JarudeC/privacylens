@@ -70,6 +70,10 @@ from pipeline.detect import detect_video
 from pipeline.extract import process_video
 import logging
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 # Get base URL from environment or default to localhost for development
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
 
@@ -201,143 +205,109 @@ async def root():
 
 @app.post("/api/v1/video/upload", response_model=VideoUploadResponse)
 async def upload_and_analyze_video(video: UploadFile = File(...)):
-    logging.info(f"Received file: {video.filename}, content_type: {video.content_type}")
+    try:
+        logger.info(f"Received upload request: {video.filename}")
+        
+        # Save uploaded video
+        video_id = str(uuid.uuid4())
+        file_path = UPLOAD_DIR / f"{video_id}_{video.filename}"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(video.file, buffer)
+        logger.info(f"Saved video to: {file_path}")
 
-    file_path = UPLOAD_DIR / f"{video.filename}"
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(video.file, buffer)
-    logging.info(f"Saved file to: {file_path}")
+        # Convert if needed
+        if file_path.suffix.lower() == ".mov":
+            file_path = convert_mov_to_mp4(file_path)
+            logger.info(f"Converted to MP4: {file_path}")
 
-    # Log file extension
-    logging.info(f"File extension: {file_path.suffix.lower()}")
+        # Run detection
+        start_time = time.time()
+        try:
+            results = detect_video(str(file_path), CREDIT_MODEL_DIR)
+            logger.info(f"Detection complete: {len(results)} frames processed")
+        except Exception as e:
+            logger.error(f"Detection failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Detection failed: {str(e)}")
 
-    # Try to open with OpenCV and log shape
-    import cv2
-    cap = cv2.VideoCapture(str(file_path))
-    if not cap.isOpened():
-        logging.error(f"OpenCV failed to open video: {file_path}")
-    else:
-        logging.info(f"OpenCV successfully opened video: {file_path}")
-        ret, frame = cap.read()
-        if ret:
-            logging.info(f"First frame shape: {frame.shape}")
-        else:
-            logging.error("Failed to read first frame from video.")
-        cap.release()
-    
-    # Generate unique video ID
-    video_id = str(uuid.uuid4())
-    
-    # ✅ WORKING: Save uploaded video file
-    file_path = UPLOAD_DIR / f"{video_id}_{video.filename}" 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(video.file, buffer)
-    logging.info(f"Saved uploaded video to: {file_path}")
-    
-    # Convert .mov to .mp4 if necessary
-    file_path = convert_mov_to_mp4(file_path)
-    
-    # Start processing
-    start_time = time.time()
-    
-    # ✅ REAL: Extract actual frames from video at 1, 2, 3 seconds
-    print(f"📹 Extracting frames from: {file_path}")
-    global last_results
-    results = detect_video({file_path}, CREDIT_MODEL_DIR)
-    last_results = results
-    unique_results = process_video(results, {file_path})
+        # Process results
+        try:
+            unique_results = process_video(results, str(file_path))
+            logger.info(f"Extracted {len(unique_results)} unique detections")
+        except Exception as e:
+            logger.error(f"Processing failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
-    pii_frames = []
-    for result in unique_results:
-        pii_frames.append(
-            PIIFrame(
-                id=result["track_id"],
-                frameUri=result["crop_path"],
-                timestamp=result["first_seen_timestamp"],
-                detections=[
-                    PIIDetection(
-                        type=result["type"],
-                        confidence=result["max_confidence"],
-                        description=result["type"] + " detected",
-                        severity="high"
+        # Create PII frames
+        pii_frames = []
+        for result in unique_results["unique_tracks"]:
+            pii_frames.append(
+                PIIFrame(
+                    id=str(result["track_id"]),
+                    frameUri=result["crop_path"],
+                    timestamp=result["first_seen_timestamp"],
+                    detections=[
+                        PIIDetection(
+                            type=result["type"],
+                            confidence=result["max_confidence"],
+                            description=f"{result['type']} detected",
+                            severity="high"
+                        )
+                    ]
                 )
-            ]
-        ))
-    
-    # 🔄 MOCK PII detection results - REPLACE with real AI/ML processin
-    
-    processing_time = int((time.time() - start_time) * 1000)
-    
-    # ✅ WORKING: Store video info for later processing
-    video_storage[video_id] = {
-        "original_path": str(file_path),
-        "pii_frames": [frame.dict() for frame in pii_frames],
-        "upload_time": time.time()
-    }
-    
-    response = VideoUploadResponse(
-        videoId=video_id,
-        piiFrames=pii_frames,
-        totalFramesAnalyzed=len(results), 
-        processingTime=processing_time
-    )
-    
-    return response
+            )
 
+        # Store results for later
+        video_storage[video_id] = {
+            "original_path": str(file_path),
+            "results": results,  # Store for blur_video
+            "pii_frames": [frame.dict() for frame in pii_frames],
+            "upload_time": time.time()
+        }
+
+        processing_time = int((time.time() - start_time) * 1000)
+        return VideoUploadResponse(
+            videoId=video_id,
+            piiFrames=pii_frames,
+            totalFramesAnalyzed=len(results),
+            processingTime=processing_time
+        )
+
+    except Exception as e:
+        logger.error(f"Upload failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/v1/video/protect", response_model=ProtectionResponse)
 async def create_protected_video(request: ProtectionRequest):
-    """
-    🎯 SECOND POST ENDPOINT: Create protected video with filtered PII objects
-    
-    FRONTEND SENDS: { videoId, piiFrames[] } (only PII objects to blur after user filtering)
-    BACKEND RETURNS: { protectedVideoUri } (URL to blurred video)
-    
-    🔄 MOCK IMPLEMENTATION:
-    - Receives filtered PII objects ✅ (WORKING)
-    - Copies video with emoji prefix 🔒 (REPLACE with real blurring)
-    - Returns protected video URL ✅ (WORKING)
-    
-    🚀 TO REPLACE:
-    1. Video blurring: Apply AI-powered blur/pixelation to PII regions
-    2. Coordinate mapping: Use bounding box coordinates for precise blurring
-    3. Quality preservation: Maintain video quality while protecting PII
-    4. Multiple protection methods: blur, pixelate, blackout options
-    """
-    
-    if request.videoId not in video_storage:
-        raise HTTPException(status_code=404, detail="Video not found")
-    
-    video_info = video_storage[request.videoId]
-    original_path = video_info["original_path"]
-    
-    if not os.path.exists(original_path):
-        raise HTTPException(status_code=404, detail="Original video file not found")
-    
-    # Simulate AI video processing time
-    await asyncio.sleep(3)  # 🔄 MOCK: Remove this delay in production
-    
-    # 🔄 MOCK: Create "protected" video with emoji prefix
-    # 🚀 REPLACE: Apply real AI blurring to PII regions
     try:
-        blur_ids = [frame["id"] for frame in request.piiFrames]  # or frame.track_id if using objects
-        output_path = PROCESSED_DIR / f"{request.videoId}_blurred.mp4"
-        protected_path = blur_video(last_results, output_path, blur_ids)
-        protected_filename = Path(protected_path).name
+        if request.videoId not in video_storage:
+            raise HTTPException(status_code=404, detail="Video not found")
+
+        video_info = video_storage[request.videoId]
+        results = video_info["results"]
+
+        # Get IDs to blur from request
+        blur_ids = [int(frame.id) for frame in request.piiFrames]
+        logger.info(f"Blurring IDs: {blur_ids}")
+
+        # Create output path
+        output_path = PROCESSED_DIR / f"{request.videoId}_protected.mp4"
+
+        try:
+            protected_path = blur_video(results, str(output_path), blur_ids)
+            logger.info(f"Created protected video: {protected_path}")
+        except Exception as e:
+            logger.error(f"Blurring failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Blurring failed: {str(e)}")
+
+        video_storage[request.videoId]["protected_path"] = protected_path
+
+        return ProtectionResponse(
+            protectedVideoUri=f"/videos/protected/{Path(protected_path).name}"
+        )
+
     except Exception as e:
+        logger.error(f"Protection failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-    
-    # ✅ WORKING: Update video storage with protected video info
-    video_storage[request.videoId]["protected_path"] = protected_path
-    video_storage[request.videoId]["protected_pii"] = [frame.dict() for frame in request.piiFrames]
-    video_storage[request.videoId]["protection_time"] = time.time()
-    
-    # ✅ WORKING: Return URL to serve protected video
-    protected_video_uri = f"{BASE_URL}/protected/{protected_filename}"
-    
-    print(f"✅ Created protected video: {protected_video_uri}")
-    
-    return ProtectionResponse(protectedVideoUri=protected_video_uri)
 
 # Note: Frame and protected video serving is handled by StaticFiles middleware above
 # Files are automatically served from:
