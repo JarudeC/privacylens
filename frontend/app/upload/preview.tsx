@@ -22,6 +22,8 @@ export default function VideoPreviewScreen() {
   const [showCaptionModal, setShowCaptionModal] = useState(false);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
 
   const video: UploadedVideo = JSON.parse(videoData);
 
@@ -42,8 +44,14 @@ export default function VideoPreviewScreen() {
       }
     }, 500);
 
+    // Auto-start background processing after 3 seconds
+    const autoProcessTimer = setTimeout(() => {
+      startBackgroundProcessing();
+    }, 3000);
+
     return () => {
       clearTimeout(timer);
+      clearTimeout(autoProcessTimer);
       try {
         if (player && typeof player.pause === 'function') {
           player.pause();
@@ -88,24 +96,13 @@ export default function VideoPreviewScreen() {
     }
   };
 
-  const continueToNext = async () => {
-    if (isUploading) return;
+  const startBackgroundProcessing = async () => {
+    if (processingStatus !== 'idle') return;
     
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsUploading(true);
+    setProcessingStatus('processing');
     
     try {
-      // Cleanup video player
-      if (player && typeof player.pause === 'function') {
-        player.pause();
-        setIsPlaying(false);
-      }
-    } catch (error) {
-      console.warn('Failed to pause video player before navigation:', error);
-    }
-
-    try {
-      // Create FormData directly with React Native compatible approach
+      // Create FormData for upload
       const formData = new FormData();
       formData.append('video', {
         uri: video.uri,
@@ -113,30 +110,51 @@ export default function VideoPreviewScreen() {
         type: video.mimeType || 'video/mp4',
       } as any);
 
-      // Upload to backend and get analysis
-      const analysisResult = await videoUploadService.uploadAndAnalyzeFormData(formData);
-      
-      // Navigate to processing with real data
+      // Upload and analyze in background
+      const result = await videoUploadService.uploadAndAnalyzeFormData(formData);
+      setAnalysisResult(result);
+      setProcessingStatus('completed');
+    } catch (error) {
+      console.error('Background processing failed:', error);
+      setProcessingStatus('failed');
+    }
+  };
+
+  const continueToNext = async () => {
+    if (isUploading) return;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsUploading(true);
+    
+    // Skip video player cleanup since it's causing issues
+    try {
+      if (player && typeof player.pause === 'function') {
+        player.pause();
+        setIsPlaying(false);
+      }
+    } catch (error) {
+      // Ignore video player errors - they don't affect functionality
+      console.warn('Video player cleanup failed (non-critical):', error);
+    }
+
+    if (processingStatus === 'completed' && analysisResult) {
+      // Processing is done, go directly to review
       router.replace({
-        pathname: '/upload/processing',
+        pathname: '/upload/review',
         params: { 
           videoData: JSON.stringify(video),
           analysisData: JSON.stringify(analysisResult)
         },
       });
-    } catch (error) {
-      console.error('Upload failed:', error);
-      // Navigate to processing anyway - it will handle the error
+    } else {
+      // Still processing or not started, go to processing screen
       router.replace({
         pathname: '/upload/processing',
         params: { 
-          videoData: JSON.stringify(video),
-          error: error instanceof Error ? error.message : 'Upload failed'
+          videoData: JSON.stringify(video)
         },
       });
     }
-    
-    setIsUploading(false);
   };
 
   const goBack = () => {
@@ -298,9 +316,9 @@ export default function VideoPreviewScreen() {
             </View>
           </View>
 
-          {/* Next Button */}
+          {/* Continue Button */}
           <Button
-            title={isUploading ? "Uploading..." : "Continue"}
+            title={isUploading ? "Processing..." : "Continue"}
             onPress={continueToNext}
             variant="primary"
             size="lg"

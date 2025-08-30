@@ -13,18 +13,21 @@ import Animated, {
 } from 'react-native-reanimated';
 import Typography from '../../components/ui/Typography';
 import { UploadedVideo, BackendResponse } from '../../lib/types/upload';
+import { videoUploadService } from '../../lib/services/videoUploadService';
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
 export default function ProcessingScreen() {
   const router = useRouter();
-  const { videoData, analysisData, error } = useLocalSearchParams<{ 
+  const { videoData, analysisData, error, filteredFrames, mode } = useLocalSearchParams<{ 
     videoData: string;
     analysisData?: string;
     error?: string;
+    filteredFrames?: string;
+    mode?: string;
   }>();
-  const [progress, setProgress] = useState(100);
   const [currentTask, setCurrentTask] = useState('Analysis completed!');
+  const [hasStartedProcessing, setHasStartedProcessing] = useState(false);
 
   const video: UploadedVideo = JSON.parse(videoData);
   const analysis = analysisData ? JSON.parse(analysisData) : null;
@@ -33,6 +36,9 @@ export default function ProcessingScreen() {
   const pulse = useSharedValue(0);
 
   useEffect(() => {
+    if (hasStartedProcessing) return; // Prevent multiple executions
+    setHasStartedProcessing(true);
+    
     // Immediately stop all audio playback
     Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
@@ -58,45 +64,120 @@ export default function ProcessingScreen() {
       -1
     );
 
-    // Handle real backend data or error
+    // Handle backend processing
     if (error) {
       setCurrentTask('Upload failed');
-      setProgress(0);
-      // Show error for 2 seconds then go back
+      // Show error for 2 seconds then return to upload
       setTimeout(() => {
-        router.back();
+        router.replace('/upload');
       }, 2000);
-    } else if (analysis) {
-      setCurrentTask('Analysis completed!');
-      setProgress(100);
-      
-      // Convert analysis result to backend response format
-      const backendResponse: BackendResponse = {
-        videoId: analysis.videoId,
-        status: 'completed',
-        piiFrames: analysis.piiFrames,
-        processedVideoUri: null, // No blurred video yet
-        processingTime: analysis.processingTime,
-        totalFramesAnalyzed: analysis.totalFramesAnalyzed,
+    } else if (mode === 'protect' && analysis && filteredFrames) {
+      // Creating protected video
+      const createProtectedVideo = async () => {
+        try {
+          const selectedFrames = JSON.parse(filteredFrames);
+          
+          setCurrentTask('Creating protected video...');
+          
+          // Call backend to create protected video
+          console.log('📹 Creating protected video...', {
+            videoId: analysis.videoId,
+            selectedFramesCount: selectedFrames.length
+          });
+          
+          const protectionResponse = await videoUploadService.createProtectedVideo(
+            analysis.videoId,
+            selectedFrames
+          );
+          
+          console.log('✅ Protected video created:', protectionResponse);
+          
+          setCurrentTask('Protection completed!');
+          
+          // Navigate to blurred preview with protected video
+          setTimeout(() => {
+            const blurredPreviewData = {
+              videoData: JSON.stringify(video),
+              responseData: JSON.stringify({
+                ...analysis,
+                piiFrames: selectedFrames,
+                processedVideoUri: protectionResponse.protectedVideoUri
+              })
+            };
+            
+            console.log('🎬 Navigating to blurred preview with:', blurredPreviewData);
+            
+            router.replace({
+              pathname: '/upload/blurred-preview',
+              params: blurredPreviewData
+            });
+          }, 1000);
+          
+        } catch (protectionError) {
+          console.error('Protection failed:', protectionError);
+          setCurrentTask('Protection failed');
+          setTimeout(() => {
+            router.replace('/upload');
+          }, 2000);
+        }
       };
-
-      // Navigate to review after brief delay
+      
+      createProtectedVideo();
+    } else if (analysis) {
+      // Already have analysis data, go to review immediately
+      setCurrentTask('Analysis completed!');
+      
       setTimeout(() => {
         router.replace({
           pathname: '/upload/review',
           params: { 
             videoData: JSON.stringify(video),
-            responseData: JSON.stringify(backendResponse)
+            analysisData: JSON.stringify(analysis)
           },
         });
       }, 1500);
     } else {
-      // No analysis data - something went wrong
-      setCurrentTask('No analysis data received');
-      setProgress(0);
-      setTimeout(() => {
-        router.back();
-      }, 2000);
+      // Need to call backend API
+      const processVideo = async () => {
+        try {
+          setCurrentTask('Uploading video...');
+          
+          // Create FormData for upload
+          const formData = new FormData();
+          formData.append('video', {
+            uri: video.uri,
+            name: video.fileName || 'video.mp4',
+            type: video.mimeType || 'video/mp4',
+          } as any);
+
+          setCurrentTask('Analyzing video...');
+          
+          // Upload to backend and get analysis
+          const analysisResult = await videoUploadService.uploadAndAnalyzeFormData(formData);
+          
+          setCurrentTask('Analysis completed!');
+          
+          // Navigate to review with analysis data
+          setTimeout(() => {
+            router.replace({
+              pathname: '/upload/review',
+              params: { 
+                videoData: JSON.stringify(video),
+                analysisData: JSON.stringify(analysisResult)
+              },
+            });
+          }, 1000);
+          
+        } catch (uploadError) {
+          console.error('Backend processing failed:', uploadError);
+          setCurrentTask('Processing failed');
+          setTimeout(() => {
+            router.replace('/upload');
+          }, 2000);
+        }
+      };
+
+      processVideo();
     }
   }, [analysis, error]);
 
@@ -132,7 +213,7 @@ export default function ProcessingScreen() {
         </AnimatedView>
       </View>
 
-      {/* Progress Info */}
+      {/* Status Info */}
       <View className="items-center space-y-6" style={{ gap: 24 }}>
         <Typography variant="h2" weight="bold" className="text-center">
           Analyzing Your Video
@@ -142,20 +223,7 @@ export default function ProcessingScreen() {
           {currentTask}
         </Typography>
 
-        {/* Progress Bar */}
-        <View className="w-full max-w-xs">
-          <View className="bg-gray-800 rounded-full h-2 overflow-hidden">
-            <View 
-              className="bg-primary h-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </View>
-          <Typography variant="caption" color="gray" className="text-center mt-2">
-            {progress}% complete
-          </Typography>
-        </View>
-
-        <View className="mt-8">
+        <View className="mt-4">
           <Typography variant="caption" color="gray" className="text-center">
             Scanning for privacy-sensitive content
           </Typography>

@@ -12,20 +12,21 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export default function ReviewFlagsScreen() {
   const router = useRouter();
-  const { videoData, responseData } = useLocalSearchParams<{ 
+  const { videoData, analysisData } = useLocalSearchParams<{ 
     videoData: string; 
-    responseData: string;
+    analysisData: string;
   }>();
   const [selectedFrame, setSelectedFrame] = useState<PIIFrame | null>(null);
   const [filteredFrames, setFilteredFrames] = useState<PIIFrame[]>([]);
   const [isCreatingProtected, setIsCreatingProtected] = useState(false);
+  const [hasNavigated, setHasNavigated] = useState(false);
   
   React.useEffect(() => {
     setFilteredFrames(response.piiFrames);
   }, []);
 
   const video: UploadedVideo = JSON.parse(videoData);
-  const response: BackendResponse = JSON.parse(responseData);
+  const response: BackendResponse = JSON.parse(analysisData);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -48,8 +49,7 @@ export default function ReviewFlagsScreen() {
   const getPIIIcon = (type: string) => {
     switch (type) {
       case 'credit_card': return 'card';
-      case 'id_card': return 'id-card';
-      case 'address': return 'location';
+      case 'car_plate': return 'car';
       default: return 'document';
     }
   };
@@ -88,50 +88,22 @@ export default function ReviewFlagsScreen() {
   };
 
   const createProtectedVideo = async () => {
-    if (isCreatingProtected) return;
+    if (isCreatingProtected || hasNavigated) return;
     
+    console.log('🔐 Creating protected video - single call');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsCreatingProtected(true);
+    setHasNavigated(true);
     
-    try {
-      // Second POST - Send filtered PII objects to backend for protection
-      const protectionResponse = await videoUploadService.createProtectedVideo(
-        response.videoId,
-        filteredFrames
-      );
-      
-      // Create updated response with protected video URL
-      const updatedResponse = {
-        ...response,
-        piiFrames: filteredFrames,
-        processedVideoUri: protectionResponse.protectedVideoUri
-      };
-      
-      router.push({
-        pathname: '/upload/blurred-preview',
-        params: { 
-          videoData: JSON.stringify(video),
-          responseData: JSON.stringify(updatedResponse)
-        },
-      });
-    } catch (error) {
-      console.error('Failed to create protected video:', error);
-      // Fall back to blur-processing screen for now
-      const updatedResponse = {
-        ...response,
-        piiFrames: filteredFrames
-      };
-      
-      router.push({
-        pathname: '/upload/blur-processing',
-        params: { 
-          videoData: JSON.stringify(video),
-          responseData: JSON.stringify(updatedResponse)
-        },
-      });
-    } finally {
-      setIsCreatingProtected(false);
-    }
+    router.replace({
+      pathname: '/upload/processing',
+      params: { 
+        videoData: JSON.stringify(video),
+        analysisData: JSON.stringify(response),
+        filteredFrames: JSON.stringify(filteredFrames),
+        mode: 'protect' // Flag to indicate we're creating protected video
+      },
+    });
   };
 
   const uploadOriginal = () => {
@@ -140,7 +112,10 @@ export default function ReviewFlagsScreen() {
       pathname: '/upload/success',
       params: { 
         videoData: JSON.stringify(video),
-        responseData: JSON.stringify(response),
+        responseData: JSON.stringify({
+          ...response,
+          piiFrames: filteredFrames // Use filtered frames, not original response
+        }),
         uploadType: 'original'
       },
     });
@@ -148,7 +123,8 @@ export default function ReviewFlagsScreen() {
 
   const goBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.back();
+    // Route back to upload screen to restart the process
+    router.replace('/upload');
   };
 
   return (
@@ -225,7 +201,7 @@ export default function ReviewFlagsScreen() {
                 {/* Frame Image */}
                 <View className="relative">
                   <Image 
-                    source={frame.frameUri}
+                    source={{ uri: frame.frameUri }}
                     style={{ 
                       width: screenWidth - 32, 
                       height: (screenWidth - 32) * 0.6 

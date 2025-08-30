@@ -10,7 +10,7 @@ export interface VideoUploadResponse {
 
 // PII Detection (what frontend already uses)
 export interface PIIDetection {
-  type: 'credit_card' | 'id_card' | 'address';
+  type: 'credit_card' | 'car_plate';
   confidence: number;
   description: string;
   severity: 'low' | 'medium' | 'high';

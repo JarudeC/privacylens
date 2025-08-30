@@ -32,7 +32,10 @@ export default function UploadVideoScreen() {
   };
 
   const selectFromGallery = async () => {
+    if (isUploading) return;
+    
     try {
+      // Request permissions BEFORE launching picker
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
@@ -40,8 +43,8 @@ export default function UploadVideoScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        allowsEditing: true,
-        quality: 0.8,
+        allowsEditing: false, // Don't force editing, let user choose their video as-is
+        quality: 1.0, // Keep original quality
         videoMaxDuration: 60,
       });
 
@@ -58,38 +61,11 @@ export default function UploadVideoScreen() {
           mimeType: asset.mimeType || 'video/mp4',
         };
 
-        // Upload immediately after selection
-        setIsUploading(true);
-        try {
-          // Create FormData directly with React Native compatible approach
-          const formData = new FormData();
-          
-          // For React Native, we need to properly format the file object
-          const fileObject = {
-            uri: video.uri,
-            name: video.fileName || 'video.mp4',
-            type: video.mimeType || 'video/mp4',
-          };
-          
-          console.log('Gallery file object being uploaded:', fileObject);
-          formData.append('video', fileObject as any);
-
-          // Upload to backend and get analysis
-          const analysisResult = await videoUploadService.uploadAndAnalyzeFormData(formData);
-          
-          // Navigate to processing with real data
-          router.replace({
-            pathname: '/upload/processing',
-            params: { 
-              videoData: JSON.stringify(video),
-              analysisData: JSON.stringify(analysisResult)
-            },
-          });
-        } catch (error) {
-          console.error('Upload failed:', error);
-          setIsUploading(false);
-          Alert.alert('Upload Error', error instanceof Error ? error.message : 'Upload failed');
-        }
+        // Navigate to preview immediately - no blocking upload
+        router.push({
+          pathname: '/upload/preview',
+          params: { videoData: JSON.stringify(video) },
+        });
       }
     } catch (error) {
       console.error('Error selecting from gallery:', error);
@@ -131,38 +107,11 @@ export default function UploadVideoScreen() {
           mimeType: asset.mimeType || 'video/mp4',
         };
 
-        // Upload immediately after recording
-        setIsUploading(true);
-        try {
-          // Create FormData directly with React Native compatible approach
-          const formData = new FormData();
-          
-          // For React Native, we need to properly format the file object
-          const fileObject = {
-            uri: video.uri,
-            name: video.fileName || 'video.mp4',
-            type: video.mimeType || 'video/mp4',
-          };
-          
-          console.log('Recorded file object being uploaded:', fileObject);
-          formData.append('video', fileObject as any);
-
-          // Upload to backend and get analysis
-          const analysisResult = await videoUploadService.uploadAndAnalyzeFormData(formData);
-          
-          // Navigate to processing with real data
-          router.replace({
-            pathname: '/upload/processing',
-            params: { 
-              videoData: JSON.stringify(video),
-              analysisData: JSON.stringify(analysisResult)
-            },
-          });
-        } catch (error) {
-          console.error('Upload failed:', error);
-          setIsUploading(false);
-          Alert.alert('Upload Error', error instanceof Error ? error.message : 'Upload failed');
-        }
+        // Navigate to preview immediately - no blocking upload
+        router.push({
+          pathname: '/upload/preview',
+          params: { videoData: JSON.stringify(video) },
+        });
       }
     } catch (error) {
       console.error('Error recording video:', error);
