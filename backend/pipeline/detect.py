@@ -11,11 +11,11 @@ def detect_video(input_video_path, model_path):
         source=input_video_path,
         # tracker="bytetrack.yaml",
         stream=True,
-        # show=True
+        # show=True,
+        conf=0.8
     )
 
     for result in results:
-        frame = result.orig_img.copy()
-        results_data.append((frame, result))
+        results_data.append( result)
 
     return results_data
