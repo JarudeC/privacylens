@@ -11,4 +11,4 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: BASE_URL
-        value: https://privacylens.onrender.com
+        value: https://privacylens-riey.onrender.com/
