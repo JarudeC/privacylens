@@ -7,3 +7,5 @@ aiofiles>=23.0.0,<24.0.0
 python-dotenv>=1.0.0,<2.0.0
 opencv-python-headless>=4.8.0,<5.0.0
 ultralytics>=8.3.187
+opencv-python
+logging
