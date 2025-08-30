@@ -23,7 +23,7 @@ class APIClient {
   private requestInterceptors: Array<(config: RequestConfig) => RequestConfig | Promise<RequestConfig>> = [];
   private responseInterceptors: Array<(response: Response) => Response | Promise<Response>> = [];
 
-  constructor(baseURL: string = 'https://privacylens.onrender.com') {
+  constructor(baseURL: string = 'https://privacylens-n4te.onrender.com') {
     this.baseURL = baseURL;
     this.defaultHeaders = {
       'Content-Type': 'application/json',
