@@ -83,6 +83,15 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "best.pt")
 
 app = FastAPI(title="PrivacyLens API", version="1.0.0")
 
+# Startup logging
+import sys
+print("🚀 PrivacyLens API starting up...", flush=True)
+print(f"🚀 Base URL: {BASE_URL}", flush=True)
+print(f"🚀 Model path: {MODEL_PATH}", flush=True)
+print(f"🚀 Model exists: {os.path.exists(MODEL_PATH)}", flush=True)
+sys.stderr.write("BACKEND STARTUP: PrivacyLens API initialized\n")
+sys.stderr.flush()
+
 # CORS middleware for frontend integration
 app.add_middleware(
     CORSMiddleware,
@@ -216,10 +225,27 @@ def extract_video_frame(video_path: str, frame_id: str, timestamp_seconds: float
         img = Image.fromarray(frame_rgb)
         
         # 🚀 AI INTEGRATION: Real YOLO detection
-        from ultralytics import YOLO
-        
-        # Load YOLO model
-        model = YOLO(MODEL_PATH)
+        try:
+            print(f"🤖 Loading YOLO model from: {MODEL_PATH}")
+            print(f"🤖 Model file exists: {os.path.exists(MODEL_PATH)}")
+            if os.path.exists(MODEL_PATH):
+                print(f"🤖 Model file size: {os.path.getsize(MODEL_PATH)} bytes")
+            
+            from ultralytics import YOLO
+            print(f"🤖 Ultralytics imported successfully")
+            
+            # Load YOLO model
+            model = YOLO(MODEL_PATH)
+            print(f"🤖 YOLO model loaded successfully")
+        except ImportError as e:
+            print(f"❌ Failed to import ultralytics: {e}")
+            raise Exception(f"YOLO dependencies not installed: {e}")
+        except Exception as e:
+            print(f"❌ Failed to load YOLO model: {e}")
+            print(f"❌ Model path: {MODEL_PATH}")
+            print(f"❌ Working directory: {os.getcwd()}")
+            print(f"❌ Files in models dir: {list(Path('models').glob('*')) if Path('models').exists() else 'models dir not found'}")
+            raise Exception(f"YOLO model loading failed: {e}")
         
         # Run detection on the frame
         results = model(frame_rgb)
@@ -477,19 +503,32 @@ async def upload_and_analyze_video(video: UploadFile = File(...)):
        - Add GPU acceleration if available
     """
     
+    import sys
+    print(f"📤 Received video upload request:", flush=True)
+    print(f"📤 - Filename: {video.filename}", flush=True)
+    print(f"📤 - Content-Type: {video.content_type}", flush=True)
+    print(f"📤 - File size: {video.size if hasattr(video, 'size') else 'unknown'}", flush=True)
+    sys.stderr.write(f"BACKEND LOG: Video upload request received - {video.filename}\n")
+    sys.stderr.flush()
+    
     if not video.content_type or not video.content_type.startswith('video/'):
+        print(f"❌ Invalid content type: {video.content_type}")
         raise HTTPException(status_code=400, detail="File must be a video")
     
     # Generate unique video ID
     video_id = str(uuid.uuid4())
+    print(f"📤 Generated video ID: {video_id}")
     
     # ✅ WORKING: Save uploaded video file
     file_path = UPLOAD_DIR / f"{video_id}_{video.filename}"
     try:
+        print(f"📤 Saving video to: {file_path}")
         with open(file_path, "wb") as buffer:
             content = await video.read()
             buffer.write(content)
+        print(f"📤 Video saved successfully, size: {len(content)} bytes")
     except Exception as e:
+        print(f"❌ Failed to save video: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save video: {str(e)}")
     
     # Start processing
@@ -615,13 +654,27 @@ async def health_check():
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Global exception handler for better error responses"""
+    import traceback
+    
+    print(f"❌ UNHANDLED EXCEPTION:", flush=True)
+    print(f"❌ Request: {request.method} {request.url}", flush=True)
+    print(f"❌ Exception type: {type(exc).__name__}", flush=True)
+    print(f"❌ Exception message: {str(exc)}", flush=True)
+    print(f"❌ Traceback:", flush=True)
+    print(traceback.format_exc(), flush=True)
+    
+    import sys
+    sys.stderr.write(f"BACKEND ERROR: {type(exc).__name__}: {str(exc)}\n")
+    sys.stderr.flush()
+    
     return JSONResponse(
         status_code=500,
         content={
             "success": False,
             "error": {
                 "message": "Internal server error",
-                "details": str(exc)
+                "details": str(exc),
+                "type": type(exc).__name__
             }
         }
     )

@@ -183,6 +183,11 @@ class APIClient {
         ])
       });
       
+      // Visible debugging for phone
+      if (typeof alert !== 'undefined') {
+        alert(`Starting upload to: ${url}`);
+      }
+      
       // First test if backend is reachable with simple GET request
       try {
         const testResponse = await fetch(this.baseURL, {
@@ -198,6 +203,12 @@ class APIClient {
           name: (testError as Error).name,
           stack: (testError as Error).stack
         });
+        
+        // Visible debugging for phone
+        if (typeof alert !== 'undefined') {
+          alert(`❌ Cannot reach backend: ${(testError as Error).message}`);
+        }
+        
         throw new APIError(`Cannot reach backend at ${this.baseURL}: ${(testError as Error).message}`);
       }
       
@@ -251,7 +262,12 @@ class APIClient {
       console.log('Upload success:', result);
       return result;
     } catch (error) {
-      console.log('Upload error details:', error);
+      console.error('❌ Upload failed:', error);
+      
+      // Visible debugging for phone
+      if (typeof alert !== 'undefined') {
+        alert(`❌ Upload failed: ${(error as Error)?.message || 'Unknown error'}`);
+      }
       
       if (error instanceof APIError) {
         throw error;
