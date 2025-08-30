@@ -64,6 +64,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import cv2
 import numpy as np
+import subprocess
 from pipeline.blur import blur_video
 from pipeline.detect import detect_video
 from pipeline.extract import process_video
@@ -234,13 +235,17 @@ async def upload_and_analyze_video(video: UploadFile = File(...)):
     video_id = str(uuid.uuid4())
     
     # ✅ WORKING: Save uploaded video file
-    file_path = UPLOAD_DIR / f"{video_id}_{video.filename}"
-    try:
-        with open(file_path, "wb") as buffer:
-            content = await video.read()
-            buffer.write(content)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save video: {str(e)}")
+    file_path = UPLOAD_DIR / f"{video_id}_{video.filename}" 
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(video.file, buffer)
+
+# Convert .mov to .mp4 if needed
+    if file_path.suffix.lower() == ".mov":
+        mp4_path = file_path.with_suffix(".mp4")
+        subprocess.run([
+            "ffmpeg", "-y", "-i", str(file_path), str(mp4_path)
+        ], check=True)
+        file_path = mp4_path 
     
     # Start processing
     start_time = time.time()
