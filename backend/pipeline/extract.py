@@ -4,7 +4,7 @@ import cv2
 import uuid
 
 # Load the model once globally so it's not reloaded each time
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "best.pt")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "best.pt")
 model = YOLO(MODEL_PATH)
 
 def process_video(video_path: str, conf: float, save: bool = True):
